@@ -1,22 +1,36 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
+import type { AxiosError } from 'axios';
+const axios = require('axios');
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const {
   ListToolsRequestSchema,
-  ErrorCode,
+  CallToolRequestSchema,
   McpError,
-} from "@modelcontextprotocol/sdk/types.js";
-import axios from "axios";
+  ErrorCode
+} = require('@modelcontextprotocol/sdk/types.js');
 
-// 检查环境变量
+interface CallToolRequest {
+  params: {
+    name: string;
+    arguments?: {
+      prompt?: string;
+    };
+  };
+}
+
+interface ReplicateErrorResponse {
+  detail?: string;
+}
+
+// Check environment variable
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 if (!REPLICATE_API_TOKEN) {
   throw new Error("REPLICATE_API_TOKEN environment variable is required");
 }
 
-// 创建axios实例
+// Create axios instance
 const axiosInstance = axios.create({
   baseURL: "https://api.replicate.com/v1",
   headers: {
@@ -26,7 +40,7 @@ const axiosInstance = axios.create({
   }
 });
 
-// 创建MCP服务器
+// Create MCP server
 const server = new Server(
   {
     name: "flux-schnell-server",
@@ -39,7 +53,7 @@ const server = new Server(
   }
 );
 
-// 列出可用的工具
+// List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -61,8 +75,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// 处理工具调用
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+// Handle tool calls
+server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
   if (request.params.name !== "generate_image") {
     throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
   }
@@ -86,24 +100,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }]
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ReplicateErrorResponse>;
+    if (axiosError.isAxiosError) {
+      const errorMessage = axiosError.response?.data?.detail || axiosError.message;
       throw new McpError(
         ErrorCode.InternalError,
-        `Replicate API error: ${error.response?.data?.detail || error.message}`
+        `Replicate API error: ${errorMessage}`
       );
     }
-    throw error;
+    if (error instanceof Error) {
+      throw new McpError(ErrorCode.InternalError, error.message);
+    }
+    throw new McpError(ErrorCode.InternalError, String(error));
   }
 });
 
-// 启动服务器
+// Start server
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Flux Schnell MCP server running on stdio");
 }
 
-main().catch((error) => {
-  console.error("Server error:", error);
+main().catch((error: unknown) => {
+  console.error("Server error:", error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
