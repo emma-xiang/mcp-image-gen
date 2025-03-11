@@ -1,3 +1,6 @@
+// 加载环境变量
+require('dotenv').config();
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -30,10 +33,17 @@ const server = http.createServer((req, res) => {
                 // 使用replicate-image-generator.js生成图像
                 const command = `node ${path.join(__dirname, 'flux-schnell-mcp/replicate-image-generator.js')} "${prompt}"`;
                 
+                // 检查环境变量是否存在
+                if (!process.env.REPLICATE_API_TOKEN) {
+                    console.error('错误: 缺少REPLICATE_API_TOKEN环境变量');
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: '服务器配置错误: 缺少API令牌' }));
+                    return;
+                }
+                
                 // 设置环境变量
                 const env = {
-                    ...process.env,
-                    REPLICATE_API_TOKEN: 'r8_7Uq4Pjdo0iHz76eD8xydKdn4GjHxCK73EDjL7'
+                    ...process.env
                 };
                 
                 exec(command, { env }, (error, stdout, stderr) => {
