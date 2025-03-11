@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>艺术风格展示</title>
+    <title>AI图像生成器</title>
     <style>
         body {
             font-family: 'Microsoft YaHei', sans-serif;
@@ -27,42 +27,52 @@
             margin-bottom: 30px;
             font-size: 1.1rem;
         }
-        .styles-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-            gap: 30px;
-        }
-        .style-card {
+        .prompt-container {
             background: white;
             border-radius: 10px;
-            overflow: hidden;
+            padding: 30px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            margin-bottom: 40px;
         }
-        .style-card:hover {
-            transform: translateY(-5px);
-        }
-        .style-image {
+        .prompt-input {
             width: 100%;
-            height: 300px;
-            object-fit: cover;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            font-family: 'Microsoft YaHei', sans-serif;
         }
-        .style-content {
-            padding: 20px;
+        .prompt-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .style-title {
-            color: #2c3e50;
-            margin-top: 0;
-            font-size: 1.5rem;
+        .prompt-button:hover {
+            background-color: #2980b9;
         }
-        .style-description {
-            color: #555;
+        .prompt-button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
         }
-        footer {
-            margin-top: 50px;
+        .result-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
             text-align: center;
-            color: #7f8c8d;
-            font-size: 0.9rem;
+        }
+        .result-image {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 5px;
+            margin-top: 20px;
         }
         .loading {
             text-align: center;
@@ -70,86 +80,236 @@
             font-style: italic;
             color: #7f8c8d;
         }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3498db;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-message {
+            color: #e74c3c;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .examples-container {
+            margin-top: 40px;
+        }
+        .examples-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .example-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .example-card:hover {
+            transform: translateY(-5px);
+        }
+        .example-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .example-content {
+            padding: 15px;
+        }
+        .example-title {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+        .example-prompt {
+            color: #555;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>艺术风格展示</h1>
+        <h1>AI图像生成器</h1>
     </header>
     
     <div class="intro">
-        <p>艺术风格是艺术家表达创意和情感的独特方式。本页面展示了不同的艺术风格，每种风格都有其独特的特点和历史背景。</p>
+        <p>输入描述文本，使用Flux Schnell AI模型生成精美图像。您可以描述场景、风格、颜色等元素。</p>
     </div>
     
-    <div class="styles-container">
-        <!-- 艺术风格卡片将在这里动态添加 -->
-        <div class="loading">正在加载艺术风格图片，请稍候...</div>
+    <div class="prompt-container">
+        <textarea class="prompt-input" id="promptInput" placeholder="请输入图像描述，例如：'印象派风格的花园场景，明亮的色彩，可见的笔触，捕捉光线变化，莫奈风格'" rows="4"></textarea>
+        <button class="prompt-button" id="generateButton">生成图像</button>
+    </div>
+    
+    <div class="result-container" id="resultContainer" style="display: none;">
+        <h2>生成结果</h2>
+        <div id="loadingIndicator" class="loading">
+            <div class="spinner"></div>
+            <p>正在生成图像，请稍候...</p>
+        </div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <img id="resultImage" class="result-image" style="display: none;" alt="生成的图像">
+    </div>
+    
+    <div class="examples-container">
+        <h2 class="examples-title">示例提示词</h2>
+        <div class="examples-grid">
+            <!-- 艺术风格示例 -->
+            <div class="example-card" data-prompt="Impressionist style garden scene, bright colors, visible brushstrokes, capturing changes in light, Monet style">
+                <img src="images/impressionism.jpg" alt="印象派" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">印象派风格</h3>
+                    <p class="example-prompt">印象派风格的花园场景，明亮的色彩，可见的笔触，捕捉光线变化，莫奈风格</p>
+                </div>
+            </div>
+            <div class="example-card" data-prompt="Cubist style still life, geometric shapes, multiple viewpoints, decomposed forms, Picasso style">
+                <img src="images/cubism.jpg" alt="立体主义" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">立体主义风格</h3>
+                    <p class="example-prompt">立体主义风格的静物，几何形状，多视角，分解形式，毕加索风格</p>
+                </div>
+            </div>
+            <div class="example-card" data-prompt="Surrealist style scene, dreamlike elements, illogical combinations, floating objects, Salvador Dali style">
+                <img src="images/surrealism.jpg" alt="超现实主义" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">超现实主义风格</h3>
+                    <p class="example-prompt">超现实主义风格场景，梦幻元素，不合逻辑的组合，漂浮物体，达利风格</p>
+                </div>
+            </div>
+            <div class="example-card" data-prompt="Ukiyo-e style Japanese landscape, flat composition, bold lines, vibrant colors, Hokusai style">
+                <img src="images/ukiyo-e.jpg" alt="浮世绘" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">浮世绘风格</h3>
+                    <p class="example-prompt">浮世绘风格的日本风景，平面构图，大胆线条，鲜艳色彩，北斋风格</p>
+                </div>
+            </div>
+            <div class="example-card" data-prompt="Art Nouveau style decorative painting, flowing curves, natural elements, intricate ornamental patterns, Alphonse Mucha style">
+                <img src="images/art-nouveau.jpg" alt="新艺术运动" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">新艺术运动风格</h3>
+                    <p class="example-prompt">新艺术运动风格的装饰画，流动曲线，自然元素，复杂装饰图案，穆夏风格</p>
+                </div>
+            </div>
+            <div class="example-card" data-prompt="Pop Art style image, vibrant colors, bold outlines, popular culture elements, Andy Warhol style">
+                <img src="images/pop-art.jpg" alt="波普艺术" class="example-image">
+                <div class="example-content">
+                    <h3 class="example-title">波普艺术风格</h3>
+                    <p class="example-prompt">波普艺术风格图像，鲜艳色彩，大胆轮廓，流行文化元素，安迪·沃霍尔风格</p>
+                </div>
+            </div>
+        </div>
     </div>
     
     <footer>
-        <p>© 2025 艺术风格展示 | 使用Flux Schnell AI模型生成的图片</p>
+        <p>© 2025 AI图像生成器 | 使用Flux Schnell AI模型生成的图片</p>
     </footer>
 
     <script>
-        // 艺术风格数据
-        const artStyles = [
-            {
-                id: "impressionism",
-                title: "印象派",
-                description: "印象派起源于19世纪末的法国，以捕捉光线和色彩的瞬间变化为特点。印象派艺术家通常使用小而可见的笔触，强调户外光线对色彩的影响，并尝试捕捉日常生活场景的即时感受。代表艺术家包括莫奈、雷诺阿和德加。",
-                prompt: "Impressionist style garden scene, bright colors, visible brushstrokes, capturing changes in light, Monet style"
-            },
-            {
-                id: "cubism",
-                title: "立体主义",
-                description: "立体主义是20世纪初由毕加索和布拉克发起的前卫艺术运动。它打破了传统的透视法则，从多个角度同时展示对象，将形体分解为几何形状。立体主义强调形式和结构，而不是逼真的表现，对现代艺术产生了深远的影响。",
-                prompt: "Cubist style still life, geometric shapes, multiple viewpoints, decomposed forms, Picasso style"
-            },
-            {
-                id: "surrealism",
-                title: "超现实主义",
-                description: "超现实主义是20世纪20年代兴起的艺术运动，受到弗洛伊德精神分析理论的影响。超现实主义艺术家创造出梦幻般的、不合逻辑的场景，将无意识的想象与现实世界元素结合。代表艺术家包括达利、马格里特和米罗。",
-                prompt: "Surrealist style scene, dreamlike elements, illogical combinations, floating objects, Salvador Dali style"
-            },
-            {
-                id: "ukiyo-e",
-                title: "浮世绘",
-                description: "浮世绘是日本江户时代（1603-1868）发展起来的木版画艺术形式。它描绘日常生活、风景、历史场景和民间故事，特点是平面化的构图、大胆的线条和鲜明的色彩。浮世绘对西方印象派艺术产生了重要影响。",
-                prompt: "Ukiyo-e style Japanese landscape, flat composition, bold lines, vibrant colors, Hokusai style"
-            },
-            {
-                id: "art-nouveau",
-                title: "新艺术运动",
-                description: "新艺术运动是19世纪末至20世纪初流行的国际性艺术风格，特点是有机、流动的线条，自然形态的装饰元素，以及精致的工艺。它影响了从建筑到家具、海报和装饰艺术的各个领域，代表艺术家包括穆夏和克里姆特。",
-                prompt: "Art Nouveau style decorative painting, flowing curves, natural elements, intricate ornamental patterns, Alphonse Mucha style"
-            },
-            {
-                id: "pop-art",
-                title: "波普艺术",
-                description: "波普艺术起源于20世纪50年代末的英国和美国，是对抽象表现主义的反应。它从大众文化和消费主义中汲取灵感，使用鲜艳的颜色、大胆的轮廓和流行文化图像。代表艺术家包括安迪·沃霍尔、罗伊·利希滕斯坦和基思·哈林。",
-                prompt: "Pop Art style image, vibrant colors, bold outlines, popular culture elements, Andy Warhol style"
-            }
-        ];
-
-        // 页面加载后生成艺术风格卡片
         document.addEventListener('DOMContentLoaded', function() {
-            const stylesContainer = document.querySelector('.styles-container');
+            const promptInput = document.getElementById('promptInput');
+            const generateButton = document.getElementById('generateButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const errorMessage = document.getElementById('errorMessage');
+            const resultImage = document.getElementById('resultImage');
             
-            // 清除加载提示
-            stylesContainer.innerHTML = '';
+            // 示例卡片点击事件
+            document.querySelectorAll('.example-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const prompt = this.getAttribute('data-prompt');
+                    promptInput.value = prompt;
+                    // 滚动到输入框
+                    promptInput.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
             
-            // 为每种艺术风格创建卡片
-            artStyles.forEach(style => {
-                const card = document.createElement('div');
-                card.className = 'style-card';
-                card.innerHTML = `
-                    <img src="images/${style.id}.jpg" alt="${style.title}" class="style-image">
-                    <div class="style-content">
-                        <h2 class="style-title">${style.title}</h2>
-                        <p class="style-description">${style.description}</p>
-                    </div>
-                `;
-                stylesContainer.appendChild(card);
+            // 生成按钮点击事件
+            generateButton.addEventListener('click', async function() {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    alert('请输入图像描述');
+                    return;
+                }
+                
+                // 显示结果容器和加载指示器
+                resultContainer.style.display = 'block';
+                loadingIndicator.style.display = 'block';
+                errorMessage.style.display = 'none';
+                resultImage.style.display = 'none';
+                
+                // 禁用生成按钮
+                generateButton.disabled = true;
+                
+                try {
+                    // 使用服务器API生成图像
+                    const response = await fetch('/generate-image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prompt: prompt })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.output) {
+                        // 显示生成的图像
+                        resultImage.src = data.output;
+                        resultImage.style.display = 'block';
+                        
+                        // 添加图像加载事件
+                        resultImage.onload = function() {
+                            // 图像加载完成后滚动到结果区域
+                            resultContainer.scrollIntoView({ behavior: 'smooth' });
+                        };
+                        
+                        // 添加图像错误处理
+                        resultImage.onerror = function() {
+                            errorMessage.textContent = '无法加载生成的图像';
+                            errorMessage.style.display = 'block';
+                            resultImage.style.display = 'none';
+                        };
+                    } else {
+                        throw new Error('生成失败: ' + (data.error || '未知错误'));
+                    }
+                } catch (error) {
+                    // 显示错误信息
+                    errorMessage.textContent = '生成图像时出错: ' + error.message;
+                    errorMessage.style.display = 'block';
+                    
+                    // 滚动到错误信息
+                    resultContainer.scrollIntoView({ behavior: 'smooth' });
+                } finally {
+                    // 隐藏加载指示器，启用生成按钮
+                    loadingIndicator.style.display = 'none';
+                    generateButton.disabled = false;
+                }
             });
         });
     </script>
